@@ -1,0 +1,85 @@
+# ====================================================================
+# NeuroVision - Git Ignore Rules
+# ====================================================================
+
+# --------------------------------------------------------------------
+# 1. Local Environment, Keys & Secrets (CRITICAL: Never commit these)
+# --------------------------------------------------------------------
+local.properties
+secrets.properties
+*.env
+*.env.*
+*.secret
+
+# Keystore & Signing Certificates
+*.jks
+*.keystore
+*.p12
+*.pem
+release.jks
+
+# --------------------------------------------------------------------
+# 2. Large AI Model Weights & Download Caches
+# --------------------------------------------------------------------
+# Download models via huggingface-cli / Hugging Face hub as instructed in docs
+*.gguf
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.ckpt
+qwen2.5-*.gguf
+.cache/
+huggingface/
+
+# --------------------------------------------------------------------
+# 3. Android & Gradle Build Artifacts
+# --------------------------------------------------------------------
+build/
+*/build/
+app/build/
+.gradle/
+bin/
+out/
+
+# Android Package outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# NDK & Native build outputs
+.cxx/
+.externalNativeBuild/
+ndkBuild/
+
+# --------------------------------------------------------------------
+# 4. Android Studio & IDEs
+# --------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# --------------------------------------------------------------------
+# 5. OS Generated & Temporary Files
+# --------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Profiler & Crash dumps
+captures/
+*.hprof
+hs_err_pid*
+*.log

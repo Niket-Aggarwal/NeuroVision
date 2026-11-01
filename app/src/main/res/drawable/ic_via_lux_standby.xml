@@ -1,0 +1,74 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="260dp"
+    android:height="260dp"
+    android:viewportWidth="260"
+    android:viewportHeight="260">
+
+    <!-- Outer ambient glow ring -->
+    <path
+        android:fillColor="#0D1E2D"
+        android:pathData="M130,20a110,110 0 1,0 0.1,0z" />
+
+    <!-- Secondary inner ring -->
+    <path
+        android:fillColor="#122B40"
+        android:pathData="M130,45a85,85 0 1,0 0.1,0z" />
+
+    <!-- Outer radar / sonar arcs -->
+    <path
+        android:strokeColor="#24516E"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M45,130 A85,85 0 0,1 215,130" />
+    <path
+        android:strokeColor="#24516E"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M55,130 A75,75 0 0,0 205,130" />
+
+    <!-- Outer Eye contour -->
+    <path
+        android:fillColor="#1A3C54"
+        android:strokeColor="#37D4A7"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M130,70 C175,70 215,100 235,130 C215,160 175,190 130,190 C85,190 45,160 25,130 C45,100 85,70 130,70 Z" />
+
+    <!-- Iris ring -->
+    <path
+        android:fillColor="#091522"
+        android:strokeColor="#37D4A7"
+        android:strokeWidth="5"
+        android:pathData="M130,95 A35,35 0 1,0 130.1,95 Z" />
+
+    <!-- Inner Pupil core -->
+    <path
+        android:fillColor="#37D4A7"
+        android:pathData="M130,112 A18,18 0 1,0 130.1,112 Z" />
+
+    <!-- Specular highlight reflection -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M124,118 A6,6 0 1,0 124.1,118 Z" />
+
+    <!-- Spatial 3x3 grid crosshair hints -->
+    <path
+        android:strokeColor="#4AE3B5"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M130,50 L130,65 M130,195 L130,210 M50,130 L65,130 M195,130 L210,130" />
+
+    <!-- Sonar pulse audio waves radiating upward -->
+    <path
+        android:strokeColor="#5CE1E6"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M105,40 A35,35 0 0,1 155,40" />
+    <path
+        android:strokeColor="#37D4A7"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M90,26 A58,58 0 0,1 170,26" />
+</vector>
+

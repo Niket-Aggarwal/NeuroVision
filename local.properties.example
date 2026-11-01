@@ -1,0 +1,23 @@
+## Local Configuration Template for NeuroVision
+# Copy this file to 'local.properties' and fill in your values.
+# 'local.properties' is gitignored and will never be pushed to GitHub.
+
+# Android SDK path (automatically configured by Android Studio)
+# Windows example:
+# sdk.dir=C\:\\Users\\<Username>\\AppData\\Local\\Android\\Sdk
+# macOS example:
+# sdk.dir=/Users/<Username>/Library/Android/sdk
+# Linux example:
+# sdk.dir=/home/<Username>/Android/Sdk
+
+# Google Gemini API Key (Get from: https://aistudio.google.com/)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Geoapify API Key (Get from: https://www.geoapify.com/)
+GEOAPIFY_API_KEY=your_geoapify_api_key_here
+
+# Optional: Custom keystore passwords (if signing with a custom keystore)
+# KEYSTORE_PASSWORD=your_keystore_password
+# KEY_ALIAS=your_key_alias
+# KEY_PASSWORD=your_key_password
+
