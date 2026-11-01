@@ -276,10 +276,3 @@ Contributions are welcome! Please follow these steps:
 4. Commit your changes (`git commit -m 'Add AmazingFeature'`).
 5. Push to the branch (`git push origin feature/AmazingFeature`).
 6. Open a Pull Request.
-
----
-
-## 📄 License
-
-This project is open-source. Please see the [LICENSE](LICENSE) file for more information.
-Ultralytics YOLO weights are licensed according to Ultralytics license terms.
