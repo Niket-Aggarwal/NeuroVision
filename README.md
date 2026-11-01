@@ -1,3 +1,8 @@
+# Problem Statement
+
+**How can we use accessible, real-time AI technology to bridge the visual gap for visually impaired individuals by converting important visual information about their surroundings into meaningful audio guidance—helping them understand, navigate, and interact with the world more independently?**
+
+
 # NeuroVision 👁️🤖
 
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-brightgreen.svg)](https://developer.android.com)
