@@ -161,7 +161,7 @@ public final class MainActivity extends AppCompatActivity {
 
             @Override
             public void onSpeechFinished() {
-                if (wakeWordListener != null && !isListeningForCommand) {
+                if (wakeWordListener != null && !isListeningForCommand && !speechGuide.isReadingContent()) {
                     wakeWordListener.resume();
                 }
             }
@@ -176,28 +176,26 @@ public final class MainActivity extends AppCompatActivity {
                 handleVoiceCommand(trailingCommand);
             } else {
                 // User said "Hello Vision" -> acknowledge and listen carefully
-                statusText.setText("Hello Vision! Listening carefully...");
+                statusText.setText("Listening... Speak now");
                 speechGuide.speak("Yes, I'm listening.", false, Guidance.PRIORITY_URGENT);
-                mainHandler.postDelayed(this::triggerVoiceCommand, 850);
+                mainHandler.postDelayed(this::startVoiceCommandListening, 1300);
             }
         });
 
-        // On-device OCR text detector (asks permission to read when text is still for
-        // >2s)
+        // On-device OCR text detector
         textDetectorManager = new TextDetectorManager((fullText, previewText) -> {
-            if (isListeningForCommand || speechGuide.isSpeaking() || waitingForOcrConfirm || waitingForNfcConfirm) {
+            if (isListeningForCommand || speechGuide.isSpeaking() || speechGuide.isReadingContent()
+                    || waitingForOcrConfirm || waitingForNfcConfirm) {
                 return;
             }
             pendingOcrText = fullText;
             waitingForOcrConfirm = true;
             vibrateShort(120);
-            speechGuide.speak("I see text: " + previewText + ". Do you want this to be read?", true,
+            speechGuide.speak("I see text: " + previewText + ". Say read this, or tap Voice.", false,
                     Guidance.PRIORITY_URGENT);
             mainHandler.postDelayed(() -> {
-                if (waitingForOcrConfirm && !isListeningForCommand) {
-                    triggerVoiceCommand();
-                }
-            }, 2000);
+                waitingForOcrConfirm = false;
+            }, 8000);
         });
 
         // NFC Medicine detector
@@ -206,13 +204,11 @@ public final class MainActivity extends AppCompatActivity {
             waitingForNfcConfirm = true;
             vibrateShort(250);
             statusText.setText("Medicine NFC Detected");
-            speechGuide.speak("Medicine NFC tag detected: " + previewTitle + ". Do you want me to read it out loud?",
+            speechGuide.speak("Medicine NFC tag detected: " + previewTitle + ". Say read it, or tap Voice.",
                     true, Guidance.PRIORITY_URGENT);
             mainHandler.postDelayed(() -> {
-                if (waitingForNfcConfirm && !isListeningForCommand) {
-                    triggerVoiceCommand();
-                }
-            }, 2200);
+                waitingForNfcConfirm = false;
+            }, 10000);
         });
         if (getIntent() != null) {
             nfcManager.handleIntent(getIntent());
@@ -334,9 +330,33 @@ public final class MainActivity extends AppCompatActivity {
                 text.contains("stop emergency") || text.contains("stop navigation") || text.contains("read");
     }
 
+    private long lastVoiceToggleTime = 0;
+
     private void triggerVoiceCommand() {
+        long now = SystemClock.elapsedRealtime();
+        if (now - lastVoiceToggleTime < 800) {
+            return;
+        }
+        lastVoiceToggleTime = now;
+
+        if (isListeningForCommand) {
+            if (speechRecognizer != null) {
+                speechRecognizer.stopListening();
+            }
+            resetVoiceButton();
+            return;
+        }
+
+        startVoiceCommandListening();
+    }
+
+    private void startVoiceCommandListening() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, REQUEST_AUDIO);
+            return;
+        }
+
+        if (isListeningForCommand) {
             return;
         }
 
@@ -346,19 +366,12 @@ public final class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (isListeningForCommand) {
-            speechRecognizer.stopListening();
-            resetVoiceButton();
-            return;
-        }
-
         // Pause wake word listener while active command recognition is running
         if (wakeWordListener != null) {
             wakeWordListener.pause();
         }
 
-        // When mic is turned on, immediately stop and mute all background voice
-        // guidance
+        // When mic is turned on, immediately stop and mute background guidance
         speechGuide.setMuted(true);
         speechGuide.stop();
 
@@ -389,10 +402,18 @@ public final class MainActivity extends AppCompatActivity {
 
     private void resetVoiceButton() {
         isListeningForCommand = false;
+        waitingForOcrConfirm = false;
+        waitingForWallDecision = false;
+        waitingForNfcConfirm = false;
         voiceCmdButton.setText("Voice Cmd");
         voiceCmdButton.setBackground(card(0xDD1A2A3B, dp(18), 0x6637D4A7));
-        if (wakeWordListener != null && !speechGuide.isSpeaking()) {
-            wakeWordListener.resume();
+        if (wakeWordListener != null && !speechGuide.isSpeaking() && !speechGuide.isReadingContent()) {
+            mainHandler.postDelayed(() -> {
+                if (wakeWordListener != null && !isListeningForCommand
+                        && !speechGuide.isSpeaking() && !speechGuide.isReadingContent()) {
+                    wakeWordListener.resume();
+                }
+            }, 600);
         }
     }
 
@@ -468,9 +489,12 @@ public final class MainActivity extends AppCompatActivity {
                 break;
 
             case NAV_REPEAT:
+                speechGuide.speak(result.spokenText, true, Guidance.PRIORITY_URGENT);
+                break;
+
             case SPEAK_INFO:
             case STATUS:
-                speechGuide.speak(result.spokenText, true, Guidance.PRIORITY_URGENT);
+                speechGuide.speakReading(result.spokenText);
                 break;
 
             case NAV_CANCEL:
@@ -500,7 +524,7 @@ public final class MainActivity extends AppCompatActivity {
                     cameraExecutor.execute(() -> {
                         String clarified = voiceAssistant.clarifyOcrText(med);
                         String toSpeak = (clarified != null && !clarified.isEmpty()) ? clarified : ("Medicine details: " + med);
-                        runOnUiThread(() -> speechGuide.speak(toSpeak, true, Guidance.PRIORITY_URGENT));
+                        runOnUiThread(() -> speechGuide.speakReading(toSpeak));
                     });
                 } else if (waitingForOcrConfirm && pendingOcrText != null) {
                     waitingForOcrConfirm = false;
@@ -509,7 +533,7 @@ public final class MainActivity extends AppCompatActivity {
                     cameraExecutor.execute(() -> {
                         String clarified = voiceAssistant.clarifyOcrText(raw);
                         String toSpeak = (clarified != null && !clarified.isEmpty()) ? clarified : ("Reading text: " + raw);
-                        runOnUiThread(() -> speechGuide.speak(toSpeak, true, Guidance.PRIORITY_URGENT));
+                        runOnUiThread(() -> speechGuide.speakReading(toSpeak));
                     });
                 } else if (textDetectorManager != null && textDetectorManager.getLastDetectedText() != null
                         && !textDetectorManager.getLastDetectedText().isEmpty()) {
@@ -517,7 +541,7 @@ public final class MainActivity extends AppCompatActivity {
                     cameraExecutor.execute(() -> {
                         String clarified = voiceAssistant.clarifyOcrText(raw);
                         String toSpeak = (clarified != null && !clarified.isEmpty()) ? clarified : ("Reading visible text: " + raw);
-                        runOnUiThread(() -> speechGuide.speak(toSpeak, true, Guidance.PRIORITY_URGENT));
+                        runOnUiThread(() -> speechGuide.speakReading(toSpeak));
                     });
                 } else {
                     speechGuide.speak(
@@ -935,7 +959,6 @@ public final class MainActivity extends AppCompatActivity {
             if (wakeWordListener != null) {
                 wakeWordListener.start();
             }
-            triggerVoiceCommand();
         } else if (requestCode == REQUEST_LOCATION && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             if (pendingNavDestination != null) {
@@ -959,13 +982,11 @@ public final class MainActivity extends AppCompatActivity {
     private void buildUi() {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.rgb(7, 12, 18));
-        root.setOnClickListener(v -> triggerVoiceCommand());
 
         // Camera preview layer
         previewView = new PreviewView(this);
         previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
         previewView.setAlpha(0f);
-        previewView.setOnClickListener(v -> triggerVoiceCommand());
 
         // Standby background image (shown when stopped instead of text)
         standbyImageView = new ImageView(this);
@@ -973,20 +994,17 @@ public final class MainActivity extends AppCompatActivity {
         standbyImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         standbyImageView.setPadding(dp(36), dp(36), dp(36), dp(36));
         standbyImageView.setVisibility(View.VISIBLE);
-        standbyImageView.setOnClickListener(v -> triggerVoiceCommand());
 
         // Bounding box & grid overlay layer
         overlayView = new OverlayView(this);
-        overlayView.setClickable(true);
-        overlayView.setFocusable(true);
-        overlayView.setOnClickListener(v -> triggerVoiceCommand());
+        overlayView.setClickable(false);
+        overlayView.setFocusable(false);
 
         // Top Header
         LinearLayout topBar = new LinearLayout(this);
         topBar.setOrientation(LinearLayout.VERTICAL);
         topBar.setPadding(dp(16), dp(16), dp(16), dp(4));
         topBar.setGravity(Gravity.CENTER_HORIZONTAL);
-        topBar.setOnClickListener(v -> triggerVoiceCommand());
 
         TextView title = new TextView(this);
         title.setText("Neuro Vision");
@@ -1092,7 +1110,6 @@ public final class MainActivity extends AppCompatActivity {
         guidanceText.setPadding(dp(16), dp(14), dp(16), dp(14));
         guidanceText.setBackground(card(0xCC111C28, dp(20), 0x5537D4A7));
         guidanceText.setVisibility(View.GONE);
-        guidanceText.setOnClickListener(v -> triggerVoiceCommand());
 
         // Loading indicator
         loadingText = new TextView(this);
@@ -1115,7 +1132,6 @@ public final class MainActivity extends AppCompatActivity {
         settingsSummary.setTextSize(12f);
         settingsSummary.setGravity(Gravity.CENTER);
         settingsSummary.setPadding(0, dp(2), 0, dp(8));
-        settingsSummary.setOnClickListener(v -> triggerVoiceCommand());
 
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.HORIZONTAL);
@@ -1370,13 +1386,15 @@ public final class MainActivity extends AppCompatActivity {
             }
 
             // Real-time OCR Text Detection (detects stable text held still for >2s)
-            if (textDetectorManager != null && !waitingForOcrConfirm && !waitingForNfcConfirm) {
+            if (textDetectorManager != null && !waitingForOcrConfirm && !waitingForNfcConfirm
+                    && !speechGuide.isReadingContent()) {
                 textDetectorManager.processFrame(bitmap, now);
             }
 
             // Real-time Wall Detection & Avoidance
             if (wallDetector != null && !waitingForWallDecision && !isListeningForCommand
-                    && !waitingForOcrConfirm && !waitingForNfcConfirm && !speechGuide.isSpeaking()) {
+                    && !waitingForOcrConfirm && !waitingForNfcConfirm && !speechGuide.isSpeaking()
+                    && !speechGuide.isReadingContent()) {
                 float hwDist = guidanceEngine.getDepthEstimator().getHardwareFocusDistance();
                 WallDetector.WallResult wallResult = wallDetector.evaluate(bitmap, detections, hwDist, now);
                 if (wallResult != null && wallResult.isWallDetected) {
@@ -1397,22 +1415,19 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     private void triggerWallAlert(WallDetector.WallResult wall) {
-        if (waitingForWallDecision || isListeningForCommand) return;
+        if (waitingForWallDecision || isListeningForCommand || speechGuide.isReadingContent()) return;
         waitingForWallDecision = true;
         vibrateShort(250);
         String distStr = (wall.distanceMeters >= 0.3f && wall.distanceMeters <= 2.5f)
                 ? String.format(Locale.US, "about %.1f meters", wall.distanceMeters)
                 : "ahead";
-        String prompt = "Wall detected " + distStr + ". Do you want to go left or right?";
+        String prompt = "Wall detected " + distStr + ". Turn left or right.";
         statusText.setText("Wall detected! Left or right?");
         speechGuide.speak(prompt, true, Guidance.PRIORITY_URGENT);
 
-        // Automatically open speech listening for hands-free answer ("left" or "right")
         mainHandler.postDelayed(() -> {
-            if (waitingForWallDecision && !isListeningForCommand) {
-                triggerVoiceCommand();
-            }
-        }, 2200);
+            waitingForWallDecision = false;
+        }, 6000);
     }
 
     private void updateUi(List<Detection> detections, Guidance guidance, int width, int height) {
@@ -1435,6 +1450,14 @@ public final class MainActivity extends AppCompatActivity {
             boolean isHazard = guidance.detection != null
                     && (guidance.emergency || guidance.moving || guidance.priority >= Guidance.PRIORITY_URGENT);
             obstacleActive = isHazard;
+
+            if (speechGuide.isReadingContent()) {
+                // If an obstacle or hazard appears while reading, buffer it as the pending caution to tell after reading completes
+                if (isHazard) {
+                    speechGuide.setPendingCaution(guidance.message, guidance.emergency, guidance.priority);
+                }
+                return;
+            }
 
             if (isHazard) {
                 // Immediate emergency warning directly on walking corridor

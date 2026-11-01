@@ -93,7 +93,7 @@ public final class TextDetectorManager {
                 long durationNotMoving = now - firstSeenTime;
                 // Text has been visible and not moving for more than 2 seconds (2000 ms)
                 if (durationNotMoving >= 2000) {
-                    if (!isSimilar(normalized, lastPromptedText) || now - lastPromptTime > 15000) {
+                    if (!isSimilar(normalized, lastPromptedText) || now - lastPromptTime > 25000) {
                         lastPromptedText = normalized;
                         lastPromptTime = now;
 

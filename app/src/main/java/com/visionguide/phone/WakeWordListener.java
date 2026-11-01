@@ -66,25 +66,30 @@ public final class WakeWordListener {
                 @Override
                 public void onEndOfSpeech() {
                     isListening = false;
-                    scheduleRestart(300);
+                    scheduleRestart(1000);
                 }
 
                 @Override
                 public void onError(int error) {
                     isListening = false;
-                    // On fatal client or busy errors, recreate the recognizer cleanly
+                    if (isPaused || isDestroyed) {
+                        return;
+                    }
+
+                    // On client or busy errors, wait a bit longer to prevent tight retry loops
                     if (error == SpeechRecognizer.ERROR_CLIENT ||
                         error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ||
                         error == SpeechRecognizer.ERROR_SERVER ||
                         error == SpeechRecognizer.ERROR_AUDIO) {
+                        mainHandler.removeCallbacksAndMessages(null);
                         mainHandler.postDelayed(() -> {
                             if (!isPaused && !isDestroyed) {
                                 initRecognizer();
                                 start();
                             }
-                        }, 500);
+                        }, 1500);
                     } else {
-                        scheduleRestart(400);
+                        scheduleRestart(1200);
                     }
                 }
 
@@ -94,7 +99,7 @@ public final class WakeWordListener {
                     if (checkMatches(results)) {
                         return;
                     }
-                    scheduleRestart(250);
+                    scheduleRestart(800);
                 }
 
                 @Override
@@ -114,7 +119,7 @@ public final class WakeWordListener {
     private boolean checkMatches(Bundle bundle) {
         if (bundle == null || isPaused || isDestroyed) return false;
         long now = System.currentTimeMillis();
-        if (now - lastTriggerTime < 1500) return false;
+        if (now - lastTriggerTime < 5000) return false;
 
         ArrayList<String> matches = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         if (matches == null || matches.isEmpty()) return false;
@@ -136,15 +141,20 @@ public final class WakeWordListener {
         if (text == null) return false;
         String t = text.toLowerCase(Locale.ROOT).trim();
 
-        // 1. Direct Vision and Visi keyword matching
-        if (t.contains("vision") || t.contains("visi") || t.contains("visual")) {
-            return true;
+        // Require intentional wake phrases
+        String[] validPhrases = new String[]{
+                "hello vision", "hey vision", "hi vision", "ok vision",
+                "hello neuro", "hey neuro", "hi neuro", "ok neuro",
+                "vision guide", "neuro vision", "neurovision"
+        };
+        for (String phrase : validPhrases) {
+            if (t.contains(phrase)) {
+                return true;
+            }
         }
 
-        // 2. Phonetic speech recognition approximations
-        if (t.contains("vidhi") || t.contains("widhi") ||
-            t.contains("wish you") || t.contains("with you") ||
-            t.contains("physician") || t.contains("mission")) {
+        // Direct command addressing starting with Vision or Neuro
+        if (t.startsWith("vision ") || t.startsWith("neuro ") || t.equals("vision") || t.equals("neuro")) {
             return true;
         }
 
@@ -156,15 +166,15 @@ public final class WakeWordListener {
         String t = raw.toLowerCase(Locale.ROOT).trim();
         String[] prefixes = new String[]{
                 "hello vision", "hey vision", "hi vision", "ok vision",
-                "hello visi", "hey visi", "hi visi", "ok visi",
-                "hello visual", "hey visual",
-                "vision", "visi"
+                "hello neuro", "hey neuro", "hi neuro", "ok neuro",
+                "vision guide", "neuro vision", "neurovision",
+                "vision", "neuro"
         };
         for (String p : prefixes) {
             int idx = t.indexOf(p);
             if (idx >= 0) {
                 String after = raw.substring(idx + p.length()).trim();
-                while (after.startsWith(",") || after.startsWith(".") || after.startsWith("!") || after.startsWith("?")) {
+                while (after.startsWith(",") || after.startsWith(".") || after.startsWith("!") || after.startsWith("?") || after.startsWith("-")) {
                     after = after.substring(1).trim();
                 }
                 return after;
@@ -212,7 +222,7 @@ public final class WakeWordListener {
                 isListening = true;
             } catch (Exception e) {
                 isListening = false;
-                scheduleRestart(800);
+                scheduleRestart(1500);
             }
         });
     }
@@ -235,7 +245,7 @@ public final class WakeWordListener {
 
     public void resume() {
         isPaused = false;
-        start();
+        scheduleRestart(800);
     }
 
     private void scheduleRestart(long delayMs) {

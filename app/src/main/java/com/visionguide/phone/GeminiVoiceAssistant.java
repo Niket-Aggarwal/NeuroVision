@@ -136,7 +136,10 @@ public final class GeminiVoiceAssistant {
             query.contains("read text") || query.contains("read medicine") || query.contains("read out loud") ||
             query.contains("yes read") || query.contains("sure") || query.contains("please read") ||
             query.contains("what does it say") || query.contains("what is written") || query.contains("read the text") ||
-            query.contains("read this") || query.contains("read medicine tag") || query.contains("check medicine")) {
+            query.contains("read this") || query.contains("read that") || query.contains("read this text") ||
+            query.contains("read that text") || query.contains("read medicine tag") || query.contains("check medicine") ||
+            query.contains("read document") || query.contains("read paper") || query.contains("read sign") ||
+            query.contains("read signboard") || query.contains("read book") || query.contains("read label")) {
             return new AssistantResult(Action.CONFIRM_READ, "Reading now.", null);
         }
 
